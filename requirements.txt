@@ -1,0 +1,6 @@
+pydantic==2.12.5
+websocket-client==1.9.0
+requests==2.32.5
+wrapper-tls-requests==1.2.5
+curl-cffi==0.14.0
+setuptools==82.0.0
