@@ -49,15 +49,15 @@ class AsyncPlayerokListener:
             account,
             self._factory,
             self._sync_queue, # type: ignore
-            chat_storage=self._chat_storage,
+            chat_storage = self._chat_storage,
         )
 
         self._websocket = WebSocketClient(
             account,
             self._factory,
             self._sync_queue, # type: ignore
-            chat_storage=self._chat_storage,
-            on_possible_new_chat=self._deal_watcher.notify_possible_new_chat,
+            chat_storage = self._chat_storage,
+            on_possible_new_chat = self._deal_watcher.notify_possible_new_chat,
         )
         self._deal_watcher.set_websocket(self._websocket)
 

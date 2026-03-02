@@ -61,7 +61,7 @@ class DealWatcher:
                 for _ in range(3):
                     try:
                         chat_list = self._account.get_chats(
-                            count=5,
+                            count=3,
                             type=ChatTypes.PM,
                         )
                     except Exception:

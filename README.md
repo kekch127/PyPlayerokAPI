@@ -76,7 +76,7 @@ GraphQL • Streaming • Proxy • Production-ready transport
 
 ### Через PyPI
 ```bash
-pip install pyplayerokapi
+pip install PyPlayerokAPI
 ```
 
 ### С помощью pip

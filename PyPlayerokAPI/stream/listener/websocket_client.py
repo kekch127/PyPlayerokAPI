@@ -141,7 +141,9 @@ class WebSocketClient:
             payload = data.get("payload", {}).get("data", {})
 
             if "userUpdated" in payload and self._on_possible_new_chat:
-                self._on_possible_new_chat()
+                unread_chats = payload.get("userUpdated").get("unreadChatsCounter", 0)
+                if unread_chats > 0:
+                    self._on_possible_new_chat()
 
             if "chatUpdated" in payload:
                 self._handle_chat_updated(payload["chatUpdated"])

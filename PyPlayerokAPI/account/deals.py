@@ -30,7 +30,7 @@ class DealsMixin(ProfileMixin):
 
         Args:
             count (int, optional): Кол-во сделок, которые нужно получить (не более 24 за один запрос). Defaults to 24.
-            statuses (Optional[List[ItemDealStatuses]], optional): Статусы заявок, которые нужно получать. Defaults to None.
+            statuses (Optional[List[ItemDealStatuses]], optional): Статусы сделок, которые нужно получать. Defaults to None.
             direction (Optional[ItemDealDirections], optional): Направление сделок. Defaults to None.
             after_cursor (str, optional): Курсор, с которого будет идти парсинг (если нет - ищет с самого начала страницы). Defaults to None.
 
