@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, field_validator, Field
+from pydantic import BaseModel, field_validator, Field, ConfigDict
 from typing import Optional, Union
 
 from ..types.enums import UserTypes
 
 
 class AccountProfile(BaseModel):
-
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     id: str
     username: Optional[str] = None
     email: Optional[str] = None
@@ -45,10 +48,6 @@ class AccountProfile(BaseModel):
         if isinstance(v, str):
             return UserTypes[v]
         return v
-    
-    
-    class Config:
-        populate_by_name = True
 
 
 class AccountBalance(BaseModel):

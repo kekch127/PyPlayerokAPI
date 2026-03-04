@@ -13,7 +13,7 @@ from PyPlayerokAPI.models.item import ItemDeal
 
 class PlayerokEvent(BaseModel):
     """
-    Универсальный класс-обертка ивентов на Playerok
+    Универсальный класс-обертка ивентов Playerok
     """
     model_config = ConfigDict(frozen = True)
     

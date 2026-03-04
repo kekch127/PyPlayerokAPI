@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, model_validator, field_validator, Field
+from pydantic import BaseModel, model_validator, field_validator, Field, ConfigDict
 from typing import List, Optional, TYPE_CHECKING, Dict
 
 if TYPE_CHECKING:
@@ -17,6 +17,9 @@ from ..types.enums import ChatMessageButtonTypes, ChatTypes, ChatStatuses
 
 class ChatMessageButton(BaseModel):
     # Объект кнопки сообщения
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
 
     type: ChatMessageButtonTypes  # Тип кнопки
     url: Optional[str] = None # URL кнопки
@@ -29,18 +32,17 @@ class ChatMessageButton(BaseModel):
         if isinstance(v, str):
             return ChatMessageButtonTypes[v]
         return v
-    
-    
-    class Config:
-        populate_by_name = True
 
 
 class ChatMessage(BaseModel):
     # Сообщение в чате
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
 
     id: str  # ID сообщения 
     text: Optional[str] = None # Текст сообщения 
-    created_at: Optional[str] = Field(alias = "createdAt")  # Дата создания 
+    created_at: Optional[str] = Field(None, alias = "createdAt")  # Дата создания 
     deleted_at: Optional[str] = Field(None, alias = "deletedAt")  # Дата удаления 
     is_read: Optional[bool] = Field(None, alias = "isRead")   # Прочитано ли сообщение 
     is_suspicious: Optional[bool] = Field(None, alias = "isSuspicious")  # Подозрительное ли сообщение 
@@ -70,10 +72,6 @@ class ChatMessage(BaseModel):
             data["buttons"] = buttons
         
         return data
-    
-    
-    class Config:
-        populate_by_name = True
 
 
 class ChatMessagePageInfo(BaseModel):
@@ -89,6 +87,9 @@ class ChatMessagePageInfo(BaseModel):
 
 class ChatMessageList(BaseModel):
     # Страница сообщений чата
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
 
     messages: Optional[List[ChatMessage]] = None  # Сообщения страницы
     page_info: Optional[ChatMessagePageInfo] = Field(None, alias = "pageInfo")  # Информация о странице
@@ -106,14 +107,13 @@ class ChatMessageList(BaseModel):
             data["messages"] = [edge.get("node") for edge in edges]
         
         return data
-    
-    
-    class Config:
-        populate_by_name = True
 
 
 class Chat(BaseModel):
     # Объект чата
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
 
     id: str  # ID чата
     type: Optional[ChatTypes] = None  # Тип чата
@@ -167,10 +167,6 @@ class Chat(BaseModel):
             data["deals"] = deals
         
         return data
-    
-    
-    class Config:
-        populate_by_name = True
 
 
 class ChatPageInfo(BaseModel):
@@ -182,6 +178,9 @@ class ChatPageInfo(BaseModel):
 
 class ChatList(BaseModel):
     # Страница чатов
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
 
     chats: List[Chat]  # Чаты страницы
     page_info: ChatPageInfo = Field(alias = "pageInfo")  # Информация о странице
@@ -199,7 +198,3 @@ class ChatList(BaseModel):
             data["chats"] = [edge.get("node") for edge in edges]
         
         return data
-    
-    
-    class Config:
-        populate_by_name = True

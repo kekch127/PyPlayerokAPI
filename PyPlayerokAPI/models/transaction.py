@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, field_validator, model_validator, Field
+from pydantic import BaseModel, field_validator, model_validator, Field, ConfigDict
 from typing import List, Optional, TYPE_CHECKING, Dict, Union
 
 if TYPE_CHECKING:
@@ -19,6 +19,9 @@ from ..types.enums import (
 
 class TransactionPaymentMethod(BaseModel):
     # Платёжный метод транзакции
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
 
     id: TransactionPaymentMethodIds  # ID метода
     name: str # Название метода
@@ -43,20 +46,19 @@ class TransactionPaymentMethod(BaseModel):
             return TransactionProviderIds[v]
         return v
 
-    class Config:
-        populate_by_name = True
-
-
 
 class TransactionProviderLimitRange(BaseModel):
     # Диапазон лимитов провайдера транзакции
 
-    min: int # Минимальная сумма (в рублях)
-    max: int # Максимальная сумма (в рублях)
+    min: Optional[int] # Минимальная сумма (в рублях)
+    max: Optional[int] # Максимальная сумма (в рублях)
 
 
 class TransactionProviderLimits(BaseModel):
     # Лимиты провайдера транзакции
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
 
     incoming: TransactionProviderLimitRange  # На пополнение
     outgoing: TransactionProviderLimitRange  # На вывод
@@ -85,10 +87,6 @@ class TransactionProviderLimits(BaseModel):
         return data
 
 
-    class Config:
-        populate_by_name = True
-
-
 class TransactionProviderRequiredUserData(BaseModel):
     # Обязательные пользовательские данные провайдера
 
@@ -99,6 +97,9 @@ class TransactionProviderRequiredUserData(BaseModel):
 
 class TransactionProviderProps(BaseModel):
     # Параметры провайдера транзакции
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
 
     required_user_data: TransactionProviderRequiredUserData  # Обязательные пользовательские данные
     tooltip: Optional[str]  # Подсказка 
@@ -116,12 +117,11 @@ class TransactionProviderProps(BaseModel):
         return data
 
 
-    class Config:
-        populate_by_name = True
-
-
 class TransactionProvider(BaseModel):
     # Объект провайдера транзакции
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
 
     id: TransactionProviderIds # ID провайдера
     name: str  # Название провайдера
@@ -166,12 +166,11 @@ class TransactionProvider(BaseModel):
         return data
 
 
-    class Config:
-        populate_by_name = True
-
-
 class Transaction(BaseModel):
     # Объект транзакции
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
 
     id: str  # ID транзакции
     operation: Optional[TransactionOperations] = None  # Тип операции
@@ -224,10 +223,6 @@ class Transaction(BaseModel):
         return v
 
 
-    class Config:
-        populate_by_name = True
-
-
 class TransactionPageInfo(BaseModel):
     start_cursor: Optional[str] = Field(None, alias = "startCursor")  # Курсор начала страницы
     end_cursor: Optional[str] = Field(None, alias = "endCursor")  # Курсор конца страницы
@@ -236,6 +231,10 @@ class TransactionPageInfo(BaseModel):
 
 
 class TransactionList(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     transactions: Optional[List[Transaction]] = None # Транзакции страницы
     page_info: TransactionPageInfo = Field(alias = "pageInfo")  # Информация о странице
     total_count: int = Field(alias = "totalCount") 
@@ -251,7 +250,3 @@ class TransactionList(BaseModel):
             data["transactions"] = [transaction.get("node") for transaction in edges]
         
         return data
-
-
-    class Config:
-        populate_by_name = True

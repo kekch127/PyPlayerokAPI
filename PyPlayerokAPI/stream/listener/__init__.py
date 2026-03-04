@@ -4,7 +4,7 @@ from .chat_storage import ChatStorage
 from .deals_watcher import DealWatcher
 from .message_resolver import MessageResolver
 from .review_watcher import ReviewWatcher
-from .websocket_client import WebSocketClient
+from .websocket_client import WebsocketClient, subprotocols
 
 
 __all__ = [
@@ -12,5 +12,6 @@ __all__ = [
     "DealWatcher",
     "MessageResolver",
     "ReviewWatcher",
-    "WebSocketClient"
+    "WebsocketClient",
+    "subprotocols",
 ]

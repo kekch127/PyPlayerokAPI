@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import time
+import asyncio
 from logging import getLogger
 from typing import Optional
 
@@ -11,22 +11,49 @@ from PyPlayerokAPI.models.chat import ChatMessage
 
 
 class MessageResolver:
-    def __init__(self, account: AccountClient):
+    """
+    Класс для дозагрузки сообщений из API.
+
+    Используется `EventFactory`, когда сообщение, полученное из websocket, не содержит полной информации (например `deal`).
+    """
+    def __init__(
+        self,
+        account: AccountClient
+    ):
         self._account = account
         self._logger = getLogger(__name__)
-
-    def resolve(
+    
+    
+    async def resolve(
         self,
         message_id: str,
         chat_id: str,
         attempts: int = 3,
-        delay: float = 4.0,
+        delay: float = 6.0
     ) -> Optional[ChatMessage]:
+        """
+        Пытается получить полную информацию о сообщении.
+
+        Args:
+            message_id (str): ID сообщения
+            chat_id (str): ID чата
+            attempts (int, optional): Количество попыток. Defaults to 3.
+            delay (float, optional): Задержка. Defaults to 6.0.
+
+        Returns:
+            Optional[ChatMessage]: Сообщение
+        """
         for _ in range(attempts):
-            time.sleep(delay)
+            await asyncio.sleep(delay)
+            
             try:
-                msg_list = self._account.get_chat_messages(chat_id, count=12)
-            except Exception:
+                msg_list = await asyncio.to_thread(
+                    self._account.get_chat_messages, 
+                    chat_id, 
+                    12
+                )
+            except Exception as e:
+                self._logger.exception(f"Не удалось получить сообщения: {e}")
                 return None
 
             try:
@@ -35,6 +62,6 @@ class MessageResolver:
                         return msg
             except Exception:
                 continue
-
-        self._logger.debug("Message not found after retries")
+        
+        self._logger.debug(f"Не удалось найти сообщение [{message_id}] спусят [{attempts}] попыток")
         return None

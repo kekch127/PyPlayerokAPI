@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, model_validator, field_validator
+from pydantic import BaseModel, Field, model_validator, field_validator, ConfigDict
 from typing import List, Optional, TYPE_CHECKING, Dict
 
 if TYPE_CHECKING:
@@ -29,6 +29,10 @@ from ..types.enums import (
 
 
 class Item(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     id: str  # ID предмета 
     slug: Optional[str] = None # Имя страницы предмета 
     name: Optional[str] = None # Название предмета 
@@ -85,10 +89,6 @@ class Item(BaseModel):
             data["data_fields"] = data_fields
         
         return data
-
-    class Config:
-        populate_by_name = True
-
 
 
 class MyItem(BaseModel):
@@ -166,6 +166,10 @@ class ItemPriorityStatusPriceRange(BaseModel):
 
 
 class ItemPriorityStatus(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     id: str  # ID статуса
     price: int  # Цена статуса
     name: str  # Название статуса
@@ -182,11 +186,11 @@ class ItemPriorityStatus(BaseModel):
         return v
 
 
-    class Config:
-        populate_by_name = True
-
-
 class ItemLog(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     id: str  # ID лога
     event: ItemLogEvents  # Событие
     created_at: Optional[str] = Field(None, alias = "createdAt")  # Дата создания
@@ -201,11 +205,11 @@ class ItemLog(BaseModel):
         return v
 
 
-    class Config:
-        populate_by_name = True
-
-
 class ItemDeal(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     id: str  # ID сделки
     status: ItemDealStatuses  # Статус сделки
     status_expiration_date: Optional[str] = Field(None, alias = "statusExpirationDate")  # Дата истечения статуса
@@ -276,10 +280,6 @@ class ItemDeal(BaseModel):
             data["obtaining_fields"] = obtaining_fields
         
         return data
-    
-    
-    class Config:
-        populate_by_name = True
 
 
 class ItemDealPageInfo(BaseModel):

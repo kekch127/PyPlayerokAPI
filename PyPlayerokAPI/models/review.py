@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, model_validator, field_validator, Field
-from typing import List, Optional, TYPE_CHECKING, Dict
+from pydantic import BaseModel, field_validator, Field, ConfigDict
+from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .item import ItemDeal
@@ -14,6 +14,9 @@ from ..types.enums import ReviewStatuses
 
 class Review(BaseModel):
     # Объект отзыва
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
 
     id: str  # ID отзыва
     status: Optional[ReviewStatuses] = None  # Статус отзыва
@@ -34,10 +37,6 @@ class Review(BaseModel):
         if isinstance(v, str):
             return ReviewStatuses[v]
         return v
-
-
-    class Config:
-        populate_by_name = True
 
 
 class ReviewPageInfo(BaseModel):

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 from typing import List, Optional, Dict
 
 from ..types.enums import UserTypes, BankCardTypes
@@ -33,6 +33,10 @@ class UserProfile(BaseModel):
 
 
 class UserBankCard(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     id: str # ID карты
     card_first_six: Optional[str] = Field(None, alias = "cardFirstSix") # Первые 6 цифр карты 
     card_last_four: Optional[str] = Field(None, alias = "cardLastFour") # Последние 4 цифры карты
@@ -48,11 +52,11 @@ class UserBankCard(BaseModel):
         return v
 
 
-    class Config:
-        populate_by_name = True
-
-
 class UserBankCardList(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     bank_cards: Optional[List[UserBankCard]] = None
     page_info: UserBankCastPageInfo = Field(alias = "pageInfo")  # Информация о странице
     total_count: int = Field(alias = "totalCount") 
@@ -68,10 +72,6 @@ class UserBankCardList(BaseModel):
             data["bank_cards"] = bank_cards
         
         return data
-
-
-    class Config:
-        populate_by_name = True
 
 
 class UserBankCastPageInfo(BaseModel):

@@ -51,7 +51,10 @@ GraphQL • Streaming • Proxy • Production-ready transport
 	- [Предисловие](#Предисловие)
 	- [Общие варианты использования](#Общие-варианты-использования)
 	- [Готовые варианты использования](#Готовые-варианты-использования)
+- [Тесты](#Тесты)
 - [Дополнительная информация](#Дополнительная-информация)
+- [Текущий changelog](docs/changelogs/latest.md)
+- [Проверить историю changelog-ов](docs/changelogs/history.md)
 
 ---
 # Особенности
@@ -312,23 +315,20 @@ new_item = account.publish_item(
 import asyncio
 
 from PyPlayerokAPI.account import AccountClient
-from PyPlayerokAPI.stream import AsyncPlayerokListener
-from PyPlayerokAPI.stream.events.account_event import AccountEvent
-from PyPlayerokAPI.stream.events.event_wrapper.py import PlayerokEvent
+from PyPlayerokAPI.stream import PlayerokAccountListener
+from PyPlayerokAPI.stream.events import AccountEvent, PlayerokEvent
 
 TOKEN = ""
 USER_AGENT = ""
 
 async def main():
 	account = AccountClient(token = TOKEN, user_agent = USER_AGENT)
-	listener = AsyncPlayerokListener(account)
+	listener = PlayerokAccountListener(account)
 	router = listener.router
 	
 	@router.on_new_message()
 	async def on_new_message(account: AccountClient, event: PlayerokEvent) -> None:
-		text = event.message.text if event.message else None
-		chat_id = event.chat.id if event.chat else None
-		print("NEW_MESSAGE", chat_id, text)
+		print(f"[MSG] for account {account.account_data.username}: {event.message.text}")
 	
 	listener.start()
 	await asyncio.Event().wait() 
@@ -342,8 +342,8 @@ if __name__ == "__main__":
 import asyncio
 
 from PyPlayerokAPI.account import AccountClient
-from PyPlayerokAPI.stream import AsyncMultiAccountListener
-from PyPlayerokAPI.stream.events.event_wrapper import PlayerokEvent
+from PyPlayerokAPI.stream import PlayerokMultiAccountListener
+from PyPlayerokAPI.stream.events import PlayerokEvent
 
 
 ACCOUNTS = [
@@ -359,28 +359,23 @@ ACCOUNTS = [
 ]
 
   
-def account_label(account: AccountClient) -> str:
-    return account.token[:10]
-
-  
 async def main():
     clients = [
         AccountClient(token = item["token"], user_agent = item["user_agent"])
         for item in ACCOUNTS
     ]
 
-    listener = AsyncMultiAccountListener(clients)
-    router = listener.router
+    listener = PlayerokMultiAccountListener(clients)
+    router = listener._router
 
     @router.on_new_message()
     async def on_new_message(account: AccountClient, event: PlayerokEvent):
         text = event.message.text if event.message else None
-        print("[MSG]", account_label(account), text)
+        print(f"[MSG] for account {account.account_data.username}: {event.message.text}")
 
     @router.on_item_paid()
     async def on_item_paid(account: AccountClient, event: PlayerokEvent):
-        deal_id = event.deal.id if event.deal else None
-        print("[ITEM_PAID]", account_label(account), deal_id)
+        print(f"[ITEM_PAID] for account {account.account_data.username}: {event.deal.id}")
 
     listener.start()
     await asyncio.Event().wait()
@@ -395,8 +390,8 @@ if __name__ == "__main__":
 import asyncio
 
 from PyPlayerokAPI.account import AccountClient
-from PyPlayerokAPI.stream import AsyncMultiAccountListener
-from PyPlayerokAPI.stream.events.account_event import AccountEvent
+from PyPlayerokAPI.stream import PlayerokMultiAccountListener
+from PyPlayerokAPI.stream.events import AccountEvent
 
   
 ACCOUNTS = [
@@ -413,7 +408,7 @@ async def main():
         for item in ACCOUNTS
     ]
 
-    listener = AsyncMultiAccountListener(clients)
+    listener = PlayerokMultiAccountListener(clients)
 
     # dispatch = False: без декораторов, ручной перебор очереди
     listener.start(dispatch = False)
@@ -427,6 +422,12 @@ async def main():
             event.type.name,
             event.chat.id if event.chat else None,
         )
+        print(f"[EVENT] for account {item.account.account_data.username}:{event.type.name} - {event.chat.id}")
+        
+        # ИЛИ
+        
+        async for event in listener:
+	        print(f"[EVENT] for account {event.account.account_data.username}:{event.type.name} - {event.chat.id}")
 
   
 if __name__ == "__main__":
@@ -438,8 +439,8 @@ if __name__ == "__main__":
 import asyncio
 
 from PyPlayerokAPI.account import AccountClient
-from PyPlayerokAPI.stream import AsyncMultiAccountListener
-from PyPlayerokAPI.stream.events.event_wrapper import PlayerokEvent
+from PyPlayerokAPI.stream import PlayerokMultiAccountListener
+from PyPlayerokAPI.stream.events import PlayerokEvent
 
   
 ACCOUNTS = [
@@ -463,8 +464,8 @@ async def main():
         for item in ACCOUNTS
     ]
     
-    listener = AsyncMultiAccountListener(clients)
-    router = listener.router
+    listener = PlayerokMultiAccountListener(clients)
+    router = listener._router
 
   
     @router.on_chat_initialized()
@@ -532,8 +533,8 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from PyPlayerokAPI.account import AccountClient
-from PyPlayerokAPI.stream import AsyncMultiAccountListener
-from PyPlayerokAPI.stream.events.event_wrapper import PlayerokEvent
+from PyPlayerokAPI.stream import PlayerokMultiAccountListener
+from PyPlayerokAPI.stream.events import PlayerokEvent
 
   
 BOT_TOKEN = "PUT_TELEGRAM_BOT_TOKEN_HERE"
@@ -558,8 +559,8 @@ def build_clients() -> list[AccountClient]:
     ]
   
   
-def install_stream_handlers(listener: AsyncMultiAccountListener, bot: Bot):
-    router = listener.router
+def install_stream_handlers(listener: PlayerokMultiAccountListener, bot: Bot):
+    router = listener._router
 
     @router.on_new_message()
     async def on_new_message(account: AccountClient, event: PlayerokEvent):
@@ -587,7 +588,7 @@ async def main():
     async def ping(message: Message):
         await message.answer("pong")
 
-    listener = AsyncMultiAccountListener(build_clients())
+    listener = PlayerokMultiAccountListener(build_clients())
     install_stream_handlers(listener, bot)
     listener.start()
 
@@ -596,6 +597,21 @@ async def main():
   
 if __name__ == "__main__":
     asyncio.run(main())
+```
+
+---
+# Тесты
+
+Библиотека предусматривает встроенные тесты, дабы вы проверили ее функциональность. 
+`pytest.ini` содержит конфигурационный файл тестов. Измените его, если вы знаете, что делаете.
+Для вызова тестов необходимо установить библиотеку pytest следующей командой:
+```bash
+pip install pytest pytest-asyncio
+```
+
+После запустите тесты
+```bash
+pytest -v
 ```
 
 ---
@@ -611,5 +627,3 @@ if __name__ == "__main__":
 - соответствие современным Python-практикам  
   
 Проект не является форком, а представляет собой самостоятельную реализацию с переработанной структурой.
-
----

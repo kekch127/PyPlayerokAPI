@@ -3,20 +3,24 @@
 from __future__ import annotations
 
 from PyPlayerokAPI.types.enums import EventTypes
-from .async_dispatcher import AsyncEventDispatcher, HandlerType
+from .dispatcher import EventDispatcher, HandlerType
 
 
-class AsyncPlayerokRouter:
-
-    def __init__(self, dispatcher: AsyncEventDispatcher):
+class PlayerokRouter:
+    def __init__(
+        self,
+        dispatcher: EventDispatcher
+    ):
         self._dispatcher = dispatcher
-
+    
+    
     def on(self, event_type: EventTypes):
         def decorator(func: HandlerType):
             self._dispatcher.register(event_type, func)
             return func
         return decorator
-
+    
+    
     def on_chat_initialized(self):
         return self.on(EventTypes.CHAT_INITIALIZED)
 

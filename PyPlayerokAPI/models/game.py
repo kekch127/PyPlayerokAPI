@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, field_validator, model_validator, Field
+from pydantic import BaseModel, field_validator, model_validator, Field, ConfigDict
 from typing import List, Optional, TYPE_CHECKING, Dict
 
 if TYPE_CHECKING:
@@ -19,6 +19,10 @@ from ..types.enums import (
 
 
 class Game(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     id: str # ID игры
     slug: str # Имя страницы игры/приложения
     name: str # Название игры/приложения
@@ -35,14 +39,13 @@ class Game(BaseModel):
         if isinstance(v, str):
             return GameTypes[v]
         return v
-    
-    
-    class Config:
-        populate_by_name = True
 
 
 class GameProfile(BaseModel):
     # Профиль игры/приложения
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
     
     id: str  # ID игры/приложения
     slug: str  # Имя страницы игры/приложения
@@ -59,10 +62,6 @@ class GameProfile(BaseModel):
         return v
 
 
-    class Config:
-        populate_by_name = True
-
-
 class GamePageInfo(BaseModel):
     start_cursor: Optional[str] = Field(None, alias = "startCursor")  # Курсор начала страницы
     end_cursor: Optional[str] = Field(None, alias = "endCursor")  # Курсор конца страницы
@@ -71,6 +70,10 @@ class GamePageInfo(BaseModel):
 
 
 class GameList(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     games: Optional[List[GameProfile]] = None  # Игры/приложения страницы
     page_info: GamePageInfo = Field(alias = "pageInfo")  # Информация о странице
     total_count: int = Field(alias = "totalCount")
@@ -88,12 +91,11 @@ class GameList(BaseModel):
         return data
 
 
-    class Config:
-        populate_by_name = True
-
-
 class GameCategory(BaseModel):
     # Категория игры/приложения
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
     
     id: str  # ID категории
     slug: Optional[str] = None  # Имя страницы категории
@@ -164,10 +166,7 @@ class GameCategory(BaseModel):
             data["props"] = props
         
         return data
-    
-    
-    class Config:
-        populate_by_name = True
+
 
 class GameCategoryProps(BaseModel):
     # Ограничения категории
@@ -178,6 +177,9 @@ class GameCategoryProps(BaseModel):
 
 class GameCategoryOption(BaseModel):
     # Опция категории
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
     
     id: str  # ID опции
     group: Optional[str]  # Группа опции
@@ -196,10 +198,6 @@ class GameCategoryOption(BaseModel):
         return v
 
 
-    class Config:
-        populate_by_name = True
-
-
 class GameCategoryInstruction(BaseModel):
     # Информацию о странице инструкии по продаже/покупке в категории.
     
@@ -215,6 +213,10 @@ class GameCategoryInstructionPageInfo(BaseModel):
 
 
 class GameCategoryInstructionList(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     instructions: Optional[List[GameCategoryInstruction]] = None  # Инструкции страницы
     page_info: GameCategoryInstructionPageInfo = Field(alias = "pageInfo")  # Информация о странице
     total_count: int = Field(alias = "totalCount")
@@ -232,12 +234,11 @@ class GameCategoryInstructionList(BaseModel):
         return data
 
 
-    class Config:
-        populate_by_name = True
-
-
 class GameCategoryAgreement(BaseModel):
     # Соглашение покупателя
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
     
     id: str  # ID соглашения
     description: Optional[str]  # Описание соглашения
@@ -253,10 +254,6 @@ class GameCategoryAgreement(BaseModel):
         return v
 
 
-    class Config:
-        populate_by_name = True
-
-
 class GameCategoryAgreementPageInfo(BaseModel):
     start_cursor: Optional[str] = Field(None, alias = "startCursor")  # Курсор начала страницы
     end_cursor: Optional[str] = Field(None, alias = "endCursor")  # Курсор конца страницы
@@ -265,6 +262,10 @@ class GameCategoryAgreementPageInfo(BaseModel):
 
 
 class GameCategoryAgreementList(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     agreements: Optional[List[GameCategoryAgreement]] = None  # Соглашения страницы
     page_info: GameCategoryAgreementPageInfo = Field(alias = "pageInfo")  # Информация о странице
     total_count: int = Field(alias = "totalCount")
@@ -282,12 +283,11 @@ class GameCategoryAgreementList(BaseModel):
         return data
 
 
-    class Config:
-        populate_by_name = True
-
-
 class GameCategoryObtainingType(BaseModel):
     # Способ получени предмета
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
     
     id: str  # ID способа
     name: str  # Название способа
@@ -324,9 +324,6 @@ class GameCategoryObtainingType(BaseModel):
         
         return data
 
-    class Config:
-        populate_by_name = True
-
 
 class GameCategoryObtainingTypePageInfo(BaseModel):
     start_cursor: Optional[str] = Field(None, alias = "startCursor")  # Курсор начала страницы
@@ -336,6 +333,10 @@ class GameCategoryObtainingTypePageInfo(BaseModel):
 
 
 class GameCategoryObtainingTypeList(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     obtaining_types: Optional[List[GameCategoryObtainingType]] = None  # Способы получения
     page_info: GameCategoryObtainingTypePageInfo= Field(alias = "pageInfo")  # Информация о странице
     total_count: int = Field(alias = "totalCount")
@@ -353,12 +354,11 @@ class GameCategoryObtainingTypeList(BaseModel):
         return data
 
 
-    class Config:
-        populate_by_name = True
-
-
 class GameCategoryDataField(BaseModel):
     # Поля данных предмета
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
     
     id: str  # ID поля
     label: Optional[str] = None  # Название поля
@@ -385,10 +385,6 @@ class GameCategoryDataField(BaseModel):
         return v
 
 
-    class Config:
-        populate_by_name = True
-
-
 class GameCategoryDataFieldPageInfo(BaseModel):
     start_cursor: Optional[str] = Field(None, alias = "startCursor")  # Курсор начала страницы
     end_cursor: Optional[str] = Field(None, alias = "endCursor")  # Курсор конца страницы
@@ -397,6 +393,10 @@ class GameCategoryDataFieldPageInfo(BaseModel):
 
 
 class GameCategoryDataFieldList(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name = True
+    )
+    
     data_fields: Optional[List[GameCategoryDataField]] = None  # Поля данных страницы
     page_info: GameCategoryDataFieldPageInfo = Field(alias = "pageInfo")  # Информация о странице
     total_count: int = Field(alias = "totalCount")
@@ -412,7 +412,3 @@ class GameCategoryDataFieldList(BaseModel):
             data["data_fields"] = [data_field.get("node") for data_field in edges]
         
         return data
-
-
-    class Config:
-        populate_by_name = True
