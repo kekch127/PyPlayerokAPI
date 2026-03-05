@@ -118,6 +118,8 @@ PyPlayerokAPI/
 ├── stream/
 |   ├── events/
 |   |   ├── Содержит реализацию обработки всех типов ивентов
+|   |   ├── markers/
+|   |   |   ├── Содержит реализацию создания маркеров
 |   |
 |   ├── listener/
 |   |   ├── Содержит реализацию листенера и клиента websocket
@@ -137,7 +139,7 @@ PyPlayerokAPI/
 
 ### Стримы
 
-`AsyncPlayerokListener` и `AsyncMultiAccountListener` запускают фоновых воркеров:
+`PlayerokAccountListener` и `PlayerokMultiAccountListener` запускают фоновых воркеров:
 - WebSocket стрим (`chatUpdated`, `chatMessageCreated`, `userUpdated`)
 - Deal стрим (ищет только новые созданные чаты с ивентом `{{ITEM_PAID}}`)
 - Review стрим (проверяет сделки которые ожидают новый отзыв)
@@ -148,6 +150,7 @@ PyPlayerokAPI/
 В мульти аккаунт моде обработчики получают:
 - `account: AccountClient`
 - `event: PlayerokEvent`
+
 или одну обертку:
 - `account_event: AccountEvent`
 
@@ -223,6 +226,72 @@ account = AccountClient(
 
 print(account.account_data) # получаем информацию об аккаунте
 ```
+
+### Поиск сообщений
+Вы можете настроить хендлер нового сообщения на поиск определенного:
+- текста
+- regex
+- наличию одному или множесту ключевым словам в тексте
+- наличию всех ключевых слов
+
+```python
+async def main():
+    clients = [
+        AccountClient(
+            token = item["token"], user_agent = item["user_agent"]
+        )
+        for item in ACCOUNTS
+    ]
+    
+    listener = PlayerokMultiAccountListener(clients)
+    router = listener._router
+    
+    for acc in listener.listeners:
+		# Выставляем хендл по определенному тексту
+        acc._factory.track_text("g", "в профиле Playerok")
+
+		# Выставляем хендл по определенному regex
+        acc._factory.track_regex("gg", r"\d")
+
+		# Выставляем хендл по ОДНОМУ из ключевых слов 
+		# (Обработчик срабоатает, если в сообщении есть одно из заданных слов)
+        acc._factory.track_contains_any("ggg", ["Playerok", "Ботом", "больше"])
+
+		# Выставляем хендл по ВСЕМ ключевым словам
+		# (Обработчик сработает, если в сообщении есть ВСЕ из заданных слов)
+        acc._factory.track_contains_all("gggg", ["Изменить", "аватар"])
+    
+    
+	# Поиск по определенному тексту в сообщении
+    @router.on_new_message(marker = "g")
+    async def handle(account, event: PlayerokEvent):
+        print(f"НАЙДЕН ТЕКСТ: {event.message.text}")
+    
+	# Поиск по regex
+    @router.on_new_message(marker = "gg")
+    async def handle1(account, event: PlayerokEvent):
+        print(f"НАЙДЕН regex: {event.message.text}")
+    
+	# Поиск по наличию ОДНОГО из ключевых слов
+    @router.on_new_message(marker = "ggg")
+    async def handle2(account, event: PlayerokEvent):
+        print(f"НАЙДЕНО КЛЮЧЕВОЕ СЛОВО ИЗ СПИСКА: {event.message.text}")
+    
+	# Поиск по наличию ВСЕХ ключевых слов
+    @router.on_new_message(marker = "gggg")
+    async def handle3(account, event: PlayerokEvent):
+        print(f"НАЙДЕНЫ ВСЕ КЛЮЧЕВЫЕ СЛОВА: {event.message.text}")
+    
+	# обычный роутер на любое сообщение
+    @router.on_new_message()
+    async def on_new_message(account: AccountClient, event: PlayerokEvent):
+        print(f"[MSG] for account {account.account_data.username}: {event.message.text}")
+
+
+    await listener.start()
+    await asyncio.Event().wait()
+```
+
 
 ### Выставление предмета на продажу
 ```python
@@ -604,6 +673,7 @@ if __name__ == "__main__":
 
 Библиотека предусматривает встроенные тесты, дабы вы проверили ее функциональность. 
 `pytest.ini` содержит конфигурационный файл тестов. Измените его, если вы знаете, что делаете.
+
 Для вызова тестов необходимо установить библиотеку pytest следующей командой:
 ```bash
 pip install pytest pytest-asyncio

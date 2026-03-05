@@ -21,3 +21,4 @@ class PlayerokEvent(BaseModel):
     chat: Optional[Chat] = None
     message: Optional[ChatMessage] = None
     deal: Optional[ItemDeal] = None
+    marker: Optional[str] = None

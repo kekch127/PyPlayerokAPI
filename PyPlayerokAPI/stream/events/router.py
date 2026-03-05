@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Optional
 from PyPlayerokAPI.types.enums import EventTypes
 from .dispatcher import EventDispatcher, HandlerType
 
@@ -14,9 +15,32 @@ class PlayerokRouter:
         self._dispatcher = dispatcher
     
     
-    def on(self, event_type: EventTypes):
+    def on(
+        self,
+        event_type: EventTypes,
+        marker: Optional[str] = None
+    ):
         def decorator(func: HandlerType):
-            self._dispatcher.register(event_type, func)
+            async def wrapper(account, event):
+                event_marker = getattr(event, "marker", None)
+                
+                # если обработчик без marker — принимаем только обычные события
+                if marker is None:
+                    if event_marker is not None:
+                        return
+                # если обработчик с marker — проверяем совпадение
+                else:
+                    if event_marker != marker:
+                        return
+                
+                result = func(account, event) # type: ignore
+                
+                if result:
+                    if hasattr(result, "__await__"):
+                        await result
+            
+            self._dispatcher.register(event_type, wrapper)
+            
             return func
         return decorator
     
@@ -24,8 +48,8 @@ class PlayerokRouter:
     def on_chat_initialized(self):
         return self.on(EventTypes.CHAT_INITIALIZED)
 
-    def on_new_message(self):
-        return self.on(EventTypes.NEW_MESSAGE)
+    def on_new_message(self, marker: Optional[str] = None):
+        return self.on(EventTypes.NEW_MESSAGE, marker)
 
     def on_new_deal(self):
         return self.on(EventTypes.NEW_DEAL)

@@ -52,3 +52,14 @@
             - `WebSocketClient -> WebsocketClient`
             - `AsyncPlayerokListener -> PlayerokAccountListener`
             - `AsyncMultiAccountListener -> PlayerokMultiAccountListener`
+
+# 1.1.4
+- Очищен код и зависимости
+
+- Основные Нововведения
+    - Добавлен поиск сообщений по определенному тексту/regex/одному-множеству-наличию всех ключевым словам
+    - Добавлен механизм поддержки сессии вебсокета для каждого клиента (KeepAlive)
+
+- Ипсравлено
+    - Исправлена ошибка, когда при поиске сообщений ивент `NEW_MESSAGE` отрабатывал для всех маркеров. Теперь ивенты с поиском по определенному параметру не вызывают отдельно ивент `NEW_MESSAGE` (router.on_new_message(marker = "marker") не вызывает router.on_new_message())
+    - Изменен вебсокет клиент (переход с `websockets` на `curl_cffi`)

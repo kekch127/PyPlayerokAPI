@@ -35,7 +35,7 @@ class Transport:
         self.proxy = proxy
         self.requests_timeout = requests_timeout
         self.request_max_retries = request_max_retries
-        self.__proxy_string = (
+        self._proxy_string = (
             f"http://{self.proxy.replace('https://', '').replace('http://', '')}"
             if self.proxy
             else None
@@ -51,13 +51,13 @@ class Transport:
 
     def _refresh_clients(self):
         self.__tls_requests = tls_requests.Client(
-            proxy=self.__proxy_string
+            proxy=self._proxy_string
         )
 
         self.__curl_session = curl_cffi.Session(
             impersonate = "chrome",
             timeout = 10,
-            proxy = self.__proxy_string,
+            proxy = self._proxy_string,
             verify = self._tmp_cert_path, # type: ignore
         )
 
@@ -111,26 +111,27 @@ class Transport:
                 try:
                     if method == "get":
                         return self.__curl_session.get(
-                            url=url,
-                            params=payload,
-                            headers=headers,
-                            timeout=self.requests_timeout,
+                            url = url,
+                            params = payload,
+                            headers = headers,
+                            timeout = self.requests_timeout,
                         )
 
                     if files:
+                        # для отправки файлов 
                         return self.__tls_requests.post(
-                            url=url,
-                            data=payload,
-                            headers=headers,
-                            files=files,
-                            timeout=self.requests_timeout,
+                            url = url,
+                            data = payload,
+                            headers = headers,
+                            files = files,
+                            timeout = self.requests_timeout,
                         )
 
                     return self.__curl_session.post(
-                        url=url,
-                        json=payload,
-                        headers=headers,
-                        timeout=self.requests_timeout,
+                        url = url,
+                        json = payload,
+                        headers = headers,
+                        timeout = self.requests_timeout,
                     )
 
                 except Exception as e:

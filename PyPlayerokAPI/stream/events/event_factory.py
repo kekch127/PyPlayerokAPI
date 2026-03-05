@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import re
 import asyncio
 from time import time
-from typing import Callable, Awaitable, Dict, List, Optional, Set
+from typing import Callable, Awaitable, Dict, List, Optional, Set, Pattern
 from logging import getLogger
 
 from PyPlayerokAPI.models.chat import Chat, ChatMessage
@@ -41,6 +42,12 @@ class EventFactory:
         
         self._review_check_deals: Set[str] = set() # сделки, по которым необходимо проверить отзыв 
         self._processed_deals: Dict[str, float] = {} # сделки, которые уже были обработаны (по сути своеобразный фильтр от дубликатов)
+        
+        # хранилище трекеров
+        self._text_trackers: Dict[str, str] = {} # Для трека конкретного текста
+        self._regex_trackers: Dict[str, Pattern] = {} # Для трека regex
+        self._contains_any_trackers: Dict[str, List[str]] = {} # Для трека любого из слов
+        self._contains_all_trackers: Dict[str, List[str]] = {} # Для трека всех слов
         
         self._PROCESSED_TTL = processed_ttl
         self._lock: asyncio.Lock = asyncio.Lock()
@@ -96,28 +103,33 @@ class EventFactory:
             ]
         
         clean_message_text = message.text.strip()
+        events: List[PlayerokEvent] = []
+        
+        custom_markers = self._match_tet_trackers(clean_message_text.lower())
+        
+        # если есть кастомный маркер - вызваем обработчик только этого кастомного маркера (router.on_new_message(marker = "custom_marker"))
+        if custom_markers:
+            for marker in custom_markers:
+                events.append(
+                    PlayerokEvent(
+                        type = EventTypes.NEW_MESSAGE,
+                        chat = chat,
+                        message = message,
+                        marker = marker
+                    )
+                )
+        else:
+            # иначе вызываем обработчик обычного нового сообщения (router.on_new_message())
+            events.append(self.build_new_message_event(chat, message))
         
         marker = self._registry.get(clean_message_text)
-        if not marker:
-            return [
-                PlayerokEvent(
-                    type = EventTypes.NEW_MESSAGE,
-                    chat = chat,
-                    message = message
-                )
-            ]
         
-        resolved = await self._resolve_message_if_needed(message, chat)
-        events = await marker.build(self, resolved, chat)
-        
-        if not events and not getattr(resolved, "deal", None):
-            return [
-                PlayerokEvent(
-                    type = EventTypes.NEW_MESSAGE,
-                    chat = chat,
-                    message = message
-                )
-            ]
+        if marker:
+            resolved = await self._resolve_message_if_needed(message, chat)
+            markers_events = await marker.build(self, resolved, chat)
+            
+            if markers_events:
+                events.extend(markers_events)
         
         return events
     
@@ -195,6 +207,18 @@ class EventFactory:
         )
     
     
+    def build_new_message_event(
+        self,
+        chat: Chat,
+        message: ChatMessage
+    ):
+        return PlayerokEvent(
+            type = EventTypes.NEW_MESSAGE,
+            chat = chat,
+            message = message
+        )
+    
+    
     # ============== Помощники ============== #
     async def _cleanup_processed(self):
         """
@@ -252,3 +276,64 @@ class EventFactory:
         except Exception as e:
             self._logger.exception(f"Не удалось дозагрузить информацию с `deal` из сообщений: {e}")
             return message
+    
+    # ============== Трекинг ============== #
+    def _match_tet_trackers(
+        self,
+        text_lower: str
+    ) -> List[str]:
+        markers = []
+        
+        # track_text
+        for marker, tracked in self._text_trackers.items():
+            if tracked in text_lower:
+                markers.append(marker)
+        
+        # track_regex
+        for marker, pattern in self._regex_trackers.items():
+            if pattern.search(text_lower):
+                markers.append(marker)
+        
+        # track_contains_any
+        for marker, words in self._contains_any_trackers.items():
+            if any(w in text_lower for w in words):
+                markers.append(marker)
+        
+        # track_contains_all
+        for marker, words in self._contains_all_trackers.items():
+            if all(w in text_lower for w in words):
+                markers.append(marker)
+        
+        return markers
+    
+    
+    def track_text(
+        self,
+        marker: str,
+        text: str
+    ):
+        self._text_trackers[marker] = text.lower()
+    
+    
+    def track_regex(
+        self,
+        marker: str,
+        pattern: str
+    ):
+        self._regex_trackers[marker] = re.compile(pattern, re.IGNORECASE)
+    
+    
+    def track_contains_any(
+        self,
+        marker: str,
+        words: List[str]
+    ):
+        self._contains_any_trackers[marker] = [w.lower() for w in words]
+    
+    
+    def track_contains_all(
+        self,
+        marker: str,
+        words: List[str]
+    ):
+        self._contains_all_trackers[marker] = [w.lower() for w in words]

@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import ssl
 import asyncio
 import json
 import uuid
 import traceback
 from logging import getLogger
-from typing import Callable, Optional, List, Dict, Set
+from typing import Callable, Optional, Dict, Set
 
-import websockets
-from websockets.typing import Subprotocol
+from curl_cffi.requests import AsyncSession, AsyncWebSocket
+from curl_cffi import CurlOpt
 
 from PyPlayerokAPI.account import AccountClient
 from PyPlayerokAPI.graphql import build_query_payload
@@ -19,9 +18,6 @@ from PyPlayerokAPI.models.chat import Chat, ChatMessage
 from PyPlayerokAPI.stream.events.event_factory import EventFactory
 from PyPlayerokAPI.stream.events.event_wrapper import PlayerokEvent
 from .chat_storage import ChatStorage
-
-
-subprotocols: List[Subprotocol] = [Subprotocol("graphql-transport-ws")]
 
 
 class WebsocketClient:
@@ -51,7 +47,7 @@ class WebsocketClient:
         self._on_possible_new_chat = on_possible_new_chat
         
         self._logger = getLogger(__name__)
-        self._ws: Optional[websockets.ClientConnection] = None
+        self._ws: Optional[AsyncWebSocket] = None
         
         self._chat_subscriptions: Dict[str, str] = {}
         self._subscribed_chat_ids: Set[str] = set()
@@ -63,6 +59,21 @@ class WebsocketClient:
         
         self._running = False
         self._task: Optional[asyncio.Task] = None
+        self._ping_task: Optional[asyncio.Task] = None
+        
+        # Билдим сессию для вебсокета в конструкторе чтобы избежать утеки сокетов
+        # посредством открытия новой сессии в _connect при переподключении
+        session_kwargs = {
+            "impersonate": "chrome",
+            "curl_options": {
+                CurlOpt.CAINFO: self._account.transport._tmp_cert_path
+            }
+        }
+        
+        if self._account.transport._proxy_string is not None:
+            session_kwargs["proxy"] = self._account.transport._proxy_string
+        
+        self._ws_session: AsyncSession = AsyncSession(**session_kwargs)
     
     
     async def _run(self):
@@ -113,24 +124,28 @@ class WebsocketClient:
             "origin": "https://playerok.com",
             "pragma": "no-cache",
             "sec-websocket-extensions": "permessage-deflate; client_max_window_bits",
+            "Sec-WebSocket-Protocol": "graphql-transport-ws",
             "cookie": f"token={self._account.token}",
             "user-agent": self._account.user_agent,
         }
+        
+        if self._ping_task:
+            self._ping_task.cancel()
+                
+            try:
+                await self._ping_task
+            except asyncio.CancelledError:
+                pass
 
         self._logger.info("Пытаюсь подключится к Playerok.com...")
         
-        ssl_context = ssl.create_default_context(
-            cafile = self._account.transport._tmp_cert_path
-        )
-        
-        self._ws = await websockets.connect(
-            "wss://ws.playerok.com/graphql",
-            additional_headers = headers,
-            subprotocols = subprotocols,
-            ssl = ssl_context
+        self._ws = await self._ws_session.ws_connect(
+            url = "wss://ws.playerok.com/graphql",
+            headers = headers
         )
         
         await self._send_connection_init()
+        self._ping_task = asyncio.create_task(self._ping_loop())
     
     
     async def _receive_loop(self):
@@ -140,9 +155,45 @@ class WebsocketClient:
         if self._ws is None:
             return
         
-        async for raw in self._ws:
-            async with self._message_semaphone: # защита от перегруза задачами и блокировки loop
-                asyncio.create_task(self._handle_message(raw))
+        while self._running:
+            try:
+                # Делаем wait_for чтобы не лочить луп, и было место для пинг-понга
+                data, opcode = await asyncio.wait_for(
+                    
+                    self._ws.recv(),
+                    timeout = 30.0
+                )
+            except asyncio.TimeoutError:
+                # Просто продолжаеь
+                continue
+            
+            if opcode == 8:
+                break
+            
+            if opcode != 1:
+                continue
+            
+            if data:
+                raw = data.decode()
+            
+                async with self._message_semaphone:
+                    asyncio.create_task(self._handle_message(raw))
+    
+    
+    async def _ping_loop(self):
+        while self._running:
+            if not self._ws:
+                await asyncio.sleep(5)
+                continue
+            
+            try:
+                await self._ws.send(json.dumps({"type": "ping"}))
+                self._logger.debug(f"PING SENT by {self._account.account_data.username}")
+            except Exception as e:
+                self._logger.debug(f"PING FAILED by {self._account.account_data.username}: {e}")
+                break
+            
+            await asyncio.sleep(35)
     
     # ============== Обработка ============== #
     async def _handle_message(
@@ -163,6 +214,10 @@ class WebsocketClient:
         self._logger.debug(f"Получена и загружена raw из WS -> {data}")
         
         try:
+            if data.get("type") == "pong":
+                self._logger.debug(f"WS pong received by account {self._account.account_data.username}")
+                return
+            
             if data.get("type") == "connection_ack":
                 await self._subscribe_chat_updated()
                 await self._subscribe_user_updated()
@@ -274,6 +329,7 @@ class WebsocketClient:
         async with self._send_lock:
             if not self._ws:
                 return
+            
             await self._ws.send(json.dumps(payload))
     
     
@@ -420,6 +476,9 @@ class WebsocketClient:
         
         if self._ws:
             await self._ws.close()
+        
+        if self._ws_session:
+            await self._ws_session.close()
         
         if self._task:
             await self._task

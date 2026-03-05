@@ -1,6 +1,6 @@
 # -*- coding=utf-8 -*-
 
-import requests
+import curl_cffi
 
 
 class CloudflareDetected(Exception):
@@ -8,7 +8,7 @@ class CloudflareDetected(Exception):
     
     def __init__(
         self,
-        response: requests.Response
+        response: curl_cffi.requests.Response
     ):
         self.response = response
         self.status_code = self.response.status_code
@@ -29,7 +29,7 @@ class RequestFailedError(Exception):
     
     def __init__(
         self,
-        response: requests.Response
+        response: curl_cffi.requests.Response
     ):
         self.response = response
         self.status_code = self.response.status_code
@@ -50,7 +50,7 @@ class RequestError(Exception):
     
     def __init__(
         self,
-        response: requests.Response
+        response: curl_cffi.requests.Response
     ):
         self.response = response
         self.json = response.json()
