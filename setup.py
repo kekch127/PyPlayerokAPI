@@ -14,7 +14,7 @@ def requires():
 
 setup(
     name = 'PyPlayerokAPI',
-    version = '1.1.4',
+    version = '1.1.5',
     author = 'kekch127',
     description = 'Неофициальная асинхронная Python-библиотека для взаимодействия с торговой площадкой Playerok через GraphQL API и систему потоковых событий.',
     long_description = readme(),

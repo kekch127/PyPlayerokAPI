@@ -18,7 +18,7 @@ class DealsMixin(ProfileMixin):
     Миксин сделок аккаунта.
     """
     
-    def get_deals(
+    async def get_deals(
         self,
         count: int = 24,
         statuses: Optional[List[ItemDealStatuses]] = None,
@@ -46,7 +46,7 @@ class DealsMixin(ProfileMixin):
                     "after": after_cursor
                 },
                 "filter": {
-                    "userId": self.account_data.id,
+                    "userId": await self.get_account_property("id"), # self.account_data.id,
                     "direction": direction.name if direction else None,
                     "status": [status.name for status in statuses] if statuses else None
                 },
@@ -54,7 +54,7 @@ class DealsMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -64,7 +64,7 @@ class DealsMixin(ProfileMixin):
         return ItemDealList.model_validate(result)
     
     
-    def get_deal(
+    async def get_deal(
         self,
         deal_id: str
     ) -> ItemDeal:
@@ -87,7 +87,7 @@ class DealsMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -97,7 +97,7 @@ class DealsMixin(ProfileMixin):
         return ItemDeal.model_validate(result)
     
     
-    def update_deal(
+    async def update_deal(
         self,
         deal_id: str,
         new_status: ItemDealStatuses
@@ -124,7 +124,7 @@ class DealsMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "post",
             payload = payload
         )

@@ -29,7 +29,7 @@ class TransactionsMixin(ProfileMixin):
     Миксин для работы с транзакциями.
     """
     
-    def get_transactions(
+    async def get_transactions(
         self,
         count: int = 24,
         operation: Optional[TransactionOperations] = None,
@@ -61,7 +61,7 @@ class TransactionsMixin(ProfileMixin):
                 "after": after_cursor
             },
             "filter": {
-                "userId": self.account_data.id,
+                "userId": await self.get_account_property("id") # self.account_data.id,
             },
             "hasSupportAccess": False
         }
@@ -101,7 +101,7 @@ class TransactionsMixin(ProfileMixin):
         payload["variables"] = json.dumps(payload["variables"])
         payload["extensions"] = json.dumps(payload["extensions"])
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -111,7 +111,7 @@ class TransactionsMixin(ProfileMixin):
         return TransactionList.model_validate(data)
 
 
-    def get_transaction_providers(
+    async def get_transaction_providers(
         self,
         direction: TransactionProviderDirections = TransactionProviderDirections.IN
     ) -> List[TransactionProvider]:
@@ -138,7 +138,7 @@ class TransactionsMixin(ProfileMixin):
         payload["variables"] = json.dumps(payload["variables"])
         payload["extensions"] = json.dumps(payload["extensions"])
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -148,7 +148,7 @@ class TransactionsMixin(ProfileMixin):
         return [TransactionProvider.model_validate(p) for p in providers]
 
 
-    def remove_transaction(
+    async def remove_transaction(
         self,
         transaction_id: str
     ) -> Transaction:
@@ -169,7 +169,7 @@ class TransactionsMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "post",
             payload = payload
         )
@@ -179,7 +179,7 @@ class TransactionsMixin(ProfileMixin):
         return Transaction.model_validate(result)
 
 
-    def request_withdrawal(
+    async def request_withdrawal(
         self,
         provider: TransactionProviderIds,
         account: str,
@@ -217,7 +217,7 @@ class TransactionsMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "post",
             payload = payload
         )

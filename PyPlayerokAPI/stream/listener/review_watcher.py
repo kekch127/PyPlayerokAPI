@@ -75,8 +75,7 @@ class ReviewWatcher:
                     if not await self._should_check_review_deal(deal_id):
                         continue
 
-                    # Оборачиваем в asyncio.to_thread по той причине, что get_deal синхронная
-                    deal = await asyncio.to_thread(self._account.get_deal, deal_id)
+                    deal = await self._account.get_deal(deal_id)
                     if not deal or not deal.review:
                         continue
 
@@ -89,8 +88,7 @@ class ReviewWatcher:
                         chat_obj = await self._chat_storage.get(deal.chat.id) # type: ignore
                         if not chat_obj:
                             try:
-                                # Оборачиваем в asyncio.to_thread по той причине, что get_chat синхронная
-                                chat_obj = await asyncio.to_thread(self._account.get_chat, deal.chat.id) # type: ignore
+                                chat_obj = await self._account.get_chat(deal.chat.id) # type: ignore
                             except Exception:
                                 chat_obj = deal.chat
 

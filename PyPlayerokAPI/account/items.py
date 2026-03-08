@@ -21,7 +21,7 @@ class ItemsMixin(ProfileMixin):
     Миксин предметов
     """
     
-    def create_item(
+    async def create_item(
         self,
         game_category_id: str, 
         obtaining_type_id: str, 
@@ -80,7 +80,7 @@ class ItemsMixin(ProfileMixin):
             "map": json.dumps(map)
         }
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "post",
             payload = payload,
             files = files
@@ -91,7 +91,7 @@ class ItemsMixin(ProfileMixin):
         return Item.model_validate(result)
 
 
-    def update_item(
+    async def update_item(
         self,
         id: str, 
         name: Optional[str] = None, 
@@ -165,7 +165,7 @@ class ItemsMixin(ProfileMixin):
             "map": json.dumps(map)
         }
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "post",
             payload = payload
         )
@@ -175,7 +175,7 @@ class ItemsMixin(ProfileMixin):
         return Item.model_validate(result)
 
 
-    def remove_item(
+    async def remove_item(
         self,
         id: str
     ) -> bool:
@@ -195,7 +195,7 @@ class ItemsMixin(ProfileMixin):
         )
         
         # TODO: хоть проверку какую-то сделать, всегда True возвращается
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "post",
             payload = payload
         )
@@ -203,7 +203,7 @@ class ItemsMixin(ProfileMixin):
         return True
     
     
-    def publish_item(
+    async def publish_item(
         self,
         item_id: str, 
         priority_status_id: str, 
@@ -233,7 +233,7 @@ class ItemsMixin(ProfileMixin):
             }
         )
 
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "post",
             payload = payload
         )
@@ -243,7 +243,7 @@ class ItemsMixin(ProfileMixin):
         return Item.model_validate(result)
     
     
-    def get_items(
+    async def get_items(
         self, 
         game_id: Optional[str] = None, 
         category_id: Optional[str] = None, 
@@ -288,7 +288,7 @@ class ItemsMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -298,7 +298,7 @@ class ItemsMixin(ProfileMixin):
         return ItemProfileList.model_validate(result)
 
 
-    def get_item(
+    async def get_item(
         self,
         id: Optional[str] = None,
         slug: Optional[str] = None
@@ -329,7 +329,7 @@ class ItemsMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -349,7 +349,7 @@ class ItemsMixin(ProfileMixin):
         return None
 
 
-    def get_item_priority_statuses(
+    async def get_item_priority_statuses(
         self, 
         item_id: str, 
         item_price: str
@@ -374,7 +374,7 @@ class ItemsMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -384,7 +384,7 @@ class ItemsMixin(ProfileMixin):
         return [ItemPriorityStatus.model_validate(s) for s in result]
     
     
-    def increase_item_priority_status(
+    async def increase_item_priority_status(
         self,
         item_id: str, 
         priority_status_id: str, 
@@ -419,7 +419,7 @@ class ItemsMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "post",
             payload = payload
         )

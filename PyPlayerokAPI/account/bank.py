@@ -19,7 +19,7 @@ class BankMixin(ProfileMixin):
     Миксин действий с картами и банками
     """
     
-    def get_sbp_bank_members(self) -> List[SBPBankMember]:
+    async def get_sbp_bank_members(self) -> List[SBPBankMember]:
         """
         Получает всех членов банка СБП
 
@@ -32,7 +32,7 @@ class BankMixin(ProfileMixin):
             hash_key = "SbpBankMembers"
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -42,7 +42,7 @@ class BankMixin(ProfileMixin):
         return [SBPBankMember.model_validate(m) for m in result]
     
     
-    def get_verified_cards(
+    async def get_verified_cards(
         self, 
         count: int = 24, 
         after_cursor: str | None = None,
@@ -75,7 +75,7 @@ class BankMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -85,7 +85,7 @@ class BankMixin(ProfileMixin):
         return UserBankCardList.model_validate(result)
     
     
-    def delete_card(
+    async def delete_card(
         self,
         card_id: str
     ) -> bool:
@@ -109,7 +109,7 @@ class BankMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "post",
             payload = payload
         )

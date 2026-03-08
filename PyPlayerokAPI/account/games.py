@@ -23,7 +23,7 @@ class GameMixin(ProfileMixin):
     Миксин игр
     """
     
-    def get_games(
+    async def get_games(
         self,
         count: int = 24,
         type: Optional[GameTypes] = None,
@@ -55,7 +55,7 @@ class GameMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -65,7 +65,7 @@ class GameMixin(ProfileMixin):
         return GameList.model_validate(result)
     
     
-    def get_game(
+    async def get_game(
         self,
         id: Optional[str] = None,
         slug: Optional[str] = None
@@ -94,7 +94,7 @@ class GameMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -105,7 +105,7 @@ class GameMixin(ProfileMixin):
     
     
     
-    def get_game_category(
+    async def get_game_category(
         self,
         id: Optional[str] = None,
         game_id: Optional[str] = None,
@@ -139,7 +139,7 @@ class GameMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -149,7 +149,7 @@ class GameMixin(ProfileMixin):
         return GameCategory.model_validate(result)
     
     
-    def get_game_category_agreements(
+    async def get_game_category_agreements(
         self,
         game_category_id: str,
         count: int = 24,
@@ -179,12 +179,12 @@ class GameMixin(ProfileMixin):
                 },
                 "filter": {
                     "gameCategoryId": game_category_id,
-                    "userId": user_id if user_id else self.account_data.id
+                    "userId": user_id or self.get_account_property("id"), # user_id else self.account_data.id
                 }
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -194,7 +194,7 @@ class GameMixin(ProfileMixin):
         return GameCategoryAgreementList.model_validate(result)
     
     
-    def get_game_category_obtaining_types(
+    async def get_game_category_obtaining_types(
         self,
         game_category_id: str,
         count: int = 24,
@@ -226,7 +226,7 @@ class GameMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -237,7 +237,7 @@ class GameMixin(ProfileMixin):
     
     
     
-    def get_game_category_instructions(
+    async def get_game_category_instructions(
         self,
         game_category_id: str,
         obtaining_type_id: str,
@@ -275,7 +275,7 @@ class GameMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -285,7 +285,7 @@ class GameMixin(ProfileMixin):
         return GameCategoryInstructionList.model_validate(result)
     
     
-    def get_game_category_data_fields(
+    async def get_game_category_data_fields(
         self,
         game_category_id: str,
         obtaining_type_id: str,
@@ -323,7 +323,7 @@ class GameMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )

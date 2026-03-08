@@ -21,7 +21,7 @@ class ChatMixin(ProfileMixin):
     Миксин чатов
     """
     
-    def get_chats(
+    async def get_chats(
         self,
         count: int = 24,
         type: Optional[ChatTypes] = None,
@@ -50,7 +50,7 @@ class ChatMixin(ProfileMixin):
                     "after": after_cursor
                 },
                 "filter": {
-                    "userId": self.account_data.id,
+                    "userId": await self.get_account_property("id"), # self.account_data.id,
                     "type": type.name if type else None,
                     "status": status.name if status else None
                 },
@@ -58,7 +58,7 @@ class ChatMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -68,7 +68,7 @@ class ChatMixin(ProfileMixin):
         return ChatList.model_validate(result)
 
 
-    def get_chat(
+    async def get_chat(
         self,
         chat_id: str
     ) -> Chat:
@@ -91,7 +91,7 @@ class ChatMixin(ProfileMixin):
             }
         )
 
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -101,7 +101,7 @@ class ChatMixin(ProfileMixin):
         return Chat.model_validate(result)
     
     
-    def get_chat_by_username(
+    async def get_chat_by_username(
         self,
         username: str
     ) -> Optional[Chat]:
@@ -117,7 +117,7 @@ class ChatMixin(ProfileMixin):
         
         next_cursor = None
         while True:
-            chats = self.get_chats(after_cursor = next_cursor)
+            chats = await self.get_chats(after_cursor = next_cursor)
             for chat in chats.chats:
                 if any(user for user in chat.users if user.username.lower() == username.lower()): # type: ignore
                     return chat
@@ -128,7 +128,7 @@ class ChatMixin(ProfileMixin):
             next_cursor = chats.page_info.end_cursor
     
     
-    def get_chat_messages(
+    async def get_chat_messages(
         self,
         chat_id: str,
         count: int = 24,
@@ -162,7 +162,7 @@ class ChatMixin(ProfileMixin):
             }
         )
 
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "get",
             payload = payload
         )
@@ -172,7 +172,7 @@ class ChatMixin(ProfileMixin):
         return ChatMessageList.model_validate(result)
     
     
-    def mark_chat_as_read(
+    async def mark_chat_as_read(
         self,
         chat_id: str
     ) -> Chat:
@@ -196,7 +196,7 @@ class ChatMixin(ProfileMixin):
             }
         )
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "post",
             payload = payload
         )
@@ -206,7 +206,7 @@ class ChatMixin(ProfileMixin):
         return Chat.model_validate(result)
     
     
-    def send_message(
+    async def send_message(
         self,
         chat_id: str,
         text: Optional[str] = None,
@@ -231,7 +231,7 @@ class ChatMixin(ProfileMixin):
             raise MissingAttributeError("Не был указан обязательный параметр: text/photo_file_path")
         
         if mark_chat_as_read:
-            self.mark_chat_as_read(chat_id)
+            await self.mark_chat_as_read(chat_id)
         
         pre_payload = build_query_payload(
             operation_name = "createChatMessage",
@@ -259,7 +259,7 @@ class ChatMixin(ProfileMixin):
             "map": json.dumps(map)
         }
         
-        response = self.transport.request(
+        response = await self.transport.request(
             method = "post",
             payload = payload
         )

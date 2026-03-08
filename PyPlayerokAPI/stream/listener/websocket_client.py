@@ -92,15 +92,12 @@ class WebsocketClient:
         Загружает список последних чатов аккаунта через API
         """
         try:
-            chats = await asyncio.to_thread(
-                self._account.get_chats,
-                24
-            )
-            chats = chats.chats
+            chats = await self._account.get_chats(24)
+            chats_list = chats.chats
         except Exception:
-            chats = []
+            chats_list = []
         
-        for chat in chats:
+        for chat in chats_list:
             await self._chat_storage.upsert(chat)
             self._subscribed_chat_ids.add(chat.id)
             
@@ -136,6 +133,9 @@ class WebsocketClient:
                 await self._ping_task
             except asyncio.CancelledError:
                 pass
+        
+        if self._ws:
+            await self._ws.close()
 
         self._logger.info("Пытаюсь подключится к Playerok.com...")
         
@@ -159,7 +159,6 @@ class WebsocketClient:
             try:
                 # Делаем wait_for чтобы не лочить луп, и было место для пинг-понга
                 data, opcode = await asyncio.wait_for(
-                    
                     self._ws.recv(),
                     timeout = 30.0
                 )
@@ -176,8 +175,7 @@ class WebsocketClient:
             if data:
                 raw = data.decode()
             
-                async with self._message_semaphone:
-                    asyncio.create_task(self._handle_message(raw))
+                asyncio.create_task(self._handle_message_limited(raw))
     
     
     async def _ping_loop(self):
@@ -188,14 +186,22 @@ class WebsocketClient:
             
             try:
                 await self._ws.send(json.dumps({"type": "ping"}))
-                self._logger.debug(f"PING SENT by {self._account.account_data.username}")
+                self._logger.debug(f"PING SENT by {await self._account.get_account_property("username")}")
             except Exception as e:
-                self._logger.debug(f"PING FAILED by {self._account.account_data.username}: {e}")
+                self._logger.debug(f"PING FAILED by {await self._account.get_account_property("username")}: {e}")
                 break
             
             await asyncio.sleep(35)
     
     # ============== Обработка ============== #
+    async def _handle_message_limited(
+        self, 
+        raw
+    ):
+        async with self._message_semaphone:
+            await self._handle_message(raw)
+    
+    
     async def _handle_message(
         self,
         raw
@@ -215,7 +221,7 @@ class WebsocketClient:
         
         try:
             if data.get("type") == "pong":
-                self._logger.debug(f"WS pong received by account {self._account.account_data.username}")
+                self._logger.debug(f"WS pong received by account {await self._account.get_account_property("username")}")
                 return
             
             if data.get("type") == "connection_ack":
@@ -303,10 +309,7 @@ class WebsocketClient:
         chat_obj = await self._chat_storage.get(chat_id)
         if not chat_obj:
             try:
-                chat_obj = await asyncio.to_thread(
-                    self._account.get_chat,
-                    chat_id
-                )
+                chat_obj = await self._account.get_chat(chat_id)
                 await self._chat_storage.upsert(chat_obj)
             except:
                 return
@@ -350,7 +353,7 @@ class WebsocketClient:
             query_key = "chatUpdated",
             variables = {
                 "filter": {
-                    "userId": self._account.account_data.id
+                    "userId": await self._account.get_account_property("id")
                 },
                 "showForbiddenImage": True,
             }
@@ -371,7 +374,7 @@ class WebsocketClient:
             operation_name = "userUpdated",
             query_key = "userUpdated",
             variables = {
-                "userId": self._account.account_data.id
+                "userId": await self._account.get_account_property("id")
             }
         )
         
@@ -481,4 +484,9 @@ class WebsocketClient:
             await self._ws_session.close()
         
         if self._task:
-            await self._task
+            self._task.cancel()
+            
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass

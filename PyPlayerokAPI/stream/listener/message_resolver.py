@@ -47,11 +47,7 @@ class MessageResolver:
             await asyncio.sleep(delay)
             
             try:
-                msg_list = await asyncio.to_thread(
-                    self._account.get_chat_messages, 
-                    chat_id, 
-                    12
-                )
+                msg_list = await self._account.get_chat_messages(chat_id, 12)
             except Exception as e:
                 self._logger.exception(f"Не удалось получить сообщения: {e}")
                 return None

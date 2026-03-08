@@ -45,3 +45,6 @@ class AccountBase:
             requests_timeout = requests_timeout,
             request_max_retries = request_max_retries,
         )
+    
+    async def close(self):
+        await self.transport.close()

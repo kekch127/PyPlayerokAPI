@@ -221,10 +221,14 @@ from PyPlayerokAPI.account import AccountClient
 account = AccountClient(
 	token = "JWT_TOKEN_HERE", # обязательное поле
 	user_agent = "", # необязательное поле (но желательное) (для разных аккаунтов используйте ранзые юзер агенты для избежания блокировки)
-	proxy = "" # необязательное поле (но желательное)
+	proxy = "" # необязательное поле (но желательное) (для разных аккаунтов используйте ранзые прокси для избежания блокировки)
 )
 
-print(account.account_data) # получаем информацию об аккаунте
+print(await account.me) # получаем информацию об аккаунте
+
+# Можно использоваться `await account.me.username` - и вы получите `username`, однако pylance будет считать это ошибкой типизации:
+# Не удается получить доступ к атрибуту "username" для класса "Awaitable[AccountProfile]" Атрибут "username" неизвестен Pylance(reportAttributeAccessIssue)
+# Подавить можно либо выставив `# type: ignore` возле ошибки, либо полностью подавить `reportAttributeAccessIssue` в настройках Pylance
 ```
 
 ### Поиск сообщений
@@ -264,28 +268,38 @@ async def main():
     
 	# Поиск по определенному тексту в сообщении
     @router.on_new_message(marker = "g")
-    async def handle(account, event: PlayerokEvent):
-        print(f"НАЙДЕН ТЕКСТ: {event.message.text}")
+    async def handle(account: AccountClient, event: PlayerokEvent):
+        profile = await account.me
+
+        print(f"НАЙДЕН ТЕКСТ у аккаунта {profile.username}: {event.message.text}")
     
 	# Поиск по regex
     @router.on_new_message(marker = "gg")
-    async def handle1(account, event: PlayerokEvent):
+    async def handle1(account: AccountClient, event: PlayerokEvent):
+        profile = await account.me
+
         print(f"НАЙДЕН regex: {event.message.text}")
     
 	# Поиск по наличию ОДНОГО из ключевых слов
     @router.on_new_message(marker = "ggg")
-    async def handle2(account, event: PlayerokEvent):
-        print(f"НАЙДЕНО КЛЮЧЕВОЕ СЛОВО ИЗ СПИСКА: {event.message.text}")
+    async def handle2(account: AccountClient, event: PlayerokEvent):
+        profile = await account.me
+
+        print(f"НАЙДЕНО КЛЮЧЕВОЕ СЛОВО ИЗ СПИСКА у аккаунта {profile.username}: {event.message.text}")
     
 	# Поиск по наличию ВСЕХ ключевых слов
     @router.on_new_message(marker = "gggg")
-    async def handle3(account, event: PlayerokEvent):
-        print(f"НАЙДЕНЫ ВСЕ КЛЮЧЕВЫЕ СЛОВА: {event.message.text}")
+    async def handle3(account: AccountClient, event: PlayerokEvent):
+        profile = await account.me
+
+        print(f"НАЙДЕНЫ ВСЕ КЛЮЧЕВЫЕ СЛОВА у аккаунта {profile.username}: {event.message.text}")
     
 	# обычный роутер на любое сообщение
     @router.on_new_message()
     async def on_new_message(account: AccountClient, event: PlayerokEvent):
-        print(f"[MSG] for account {account.account_data.username}: {event.message.text}")
+        profile = await account.me
+
+        print(f"[MSG] for account {profile.username}: {event.message.text}")
 
 
     await listener.start()
@@ -295,85 +309,92 @@ async def main():
 
 ### Выставление предмета на продажу
 ```python
+import asyncio
 from PyPlayerokAPI.account import AccountClient
 
 account = AccountClient(token = "", user_agent = "")
 
-# получаем информацию игры
-game = account.get_game(slug = "minecraft")
+async def main():
+    # получаем информацию игры
+    game = await account.get_game(slug = "minecraft")
 
-# # получаем необходимую категорию (все доступные категории описаны в game.categories)
-game_category = account.get_game_category(
-    id = [category for category in game.categories if category.name == "Ключи"][0].id
-)
+    # # получаем необходимую категорию (все доступные категории описаны в game.categories)
+    game_category = await account.get_game_category(
+        id = [category for category in game.categories if category.name == "Ключи"][0].id
+    )
 
-# получаем варианты "доставки" товара в этой категории
-game_obtaining_type_list = account.get_game_category_obtaining_types(
-    game_category_id = game_category.id
-)
+    # получаем варианты "доставки" товара в этой категории
+    game_obtaining_type_list = await account.get_game_category_obtaining_types(
+        game_category_id = game_category.id
+    )
 
-# выбираем тип выдачи "Без входа в аккаунт"
-choosed_obtaining_type = [
-    obt_type for obt_type in game_obtaining_type_list.obtaining_types if obt_type.name == "Без входа в аккаунт"
-][0]
+    # выбираем тип выдачи "Без входа в аккаунт"
+    choosed_obtaining_type = [
+        obt_type for obt_type in game_obtaining_type_list.obtaining_types if obt_type.name == "Без входа в аккаунт"
+    ][0]
 
-# выбираем вариант версии игры (pc, mobile, ps, xbox)
-gift_type_option = [
-    gift_type for gift_type in game_category.options if gift_type.value == "pc"
-]
+    # выбираем вариант версии игры (pc, mobile, ps, xbox)
+    gift_type_option = [
+        gift_type for gift_type in game_category.options if gift_type.value == "pc"
+    ]
 
-# получаем поля с данными категории определенного типа выдачи
-data_fields_list = account.get_game_category_data_fields(
-    game_category_id = game_category.id,
-    obtaining_type_id = choosed_obtaining_type.id
-)
+    # получаем поля с данными категории определенного типа выдачи
+    data_fields_list = await account.get_game_category_data_fields(
+        game_category_id = game_category.id,
+        obtaining_type_id = choosed_obtaining_type.id
+    )
 
-# Берем поле с данными о комментарии (все доступные поля описаны в data_fields_list.data_fields)
-comment_data_field = [
-    data_field for data_field in data_fields_list.data_fields if data_field.label == "Комментарий"
-][0]
+    # Берем поле с данными о комментарии (все доступные поля описаны в data_fields_list.data_fields)
+    comment_data_field = [
+        data_field for data_field in data_fields_list.data_fields if data_field.label == "Комментарий"
+    ][0]
 
-# Задаем значение данному полю, так как оно обязательное (не менее 10 симовлов)
-comment_data_field.value = "Спасибо! Заказывайте у нас еще!"
+    # Задаем значение данному полю, так как оно обязательное (не менее 10 симовлов)
+    comment_data_field.value = "Спасибо! Заказывайте у нас еще!"
 
-# Берем поле с данными о ключе
-key_data_field = [
-    data_field for data_field in data_fields_list.data_fields if data_field.label == "Ключ"
-][0]
+    # Берем поле с данными о ключе
+    key_data_field = [
+        data_field for data_field in data_fields_list.data_fields if data_field.label == "Ключ"
+    ][0]
 
-# Задаем значение данному полю, так как оно обязательное
-key_data_field.value = "J73D2-XXXXX-XXXXX-XXXXX-XXXXX"
+    # Задаем значение данному полю, так как оно обязательное
+    key_data_field.value = "J73D2-XXXXX-XXXXX-XXXXX-XXXXX"
 
-# описываем путь к файлу фотографии для карточки товара
-banner_attachment = "banner.jpg"
+    # описываем путь к файлу фотографии для карточки товара
+    banner_attachment = "banner.jpg"
 
-# вызываем метод создания товара
-item = account.create_item(
-    game_category_id = game_category.id, # указываем id категории игры
-    obtaining_type_id = choosed_obtaining_type.id, # указывает id типа получения товара
-    name = "Ключ MINECRAFT JAVA / BEDROCK", # указываем название товара
-    price = 1700, # указываем цену товара
-    description = """
-🌹Активация через Веб-браузер:
-1️⃣ Запустите веб-браузер и перейдите по адресу: https://redeem.microsoft.com
-2️⃣ Войдите, используя свои учетные данные Microsoft
-3️⃣Введите код активации и нажмите «Далее»; следуйте инструкциям для подтверждения
-    """, # указываем описание товара
-    options = gift_type_option, # указываем вариант товара
-    data_fields = [comment_data_field, key_data_field], # указываем поля с данными предмета
-    attachments = [banner_attachment] # указываем фотографии и тд
-)
+    # вызываем метод создания товара
+    item = await account.create_item(
+        game_category_id = game_category.id, # указываем id категории игры
+        obtaining_type_id = choosed_obtaining_type.id, # указывает id типа получения товара
+        name = "Ключ MINECRAFT JAVA / BEDROCK", # указываем название товара
+        price = 1700, # указываем цену товара
+        description = """
+    🌹Активация через Веб-браузер:
+    1️⃣ Запустите веб-браузер и перейдите по адресу: https://redeem.microsoft.com
+    2️⃣ Войдите, используя свои учетные данные Microsoft
+    3️⃣Введите код активации и нажмите «Далее»; следуйте инструкциям для подтверждения
+        """, # указываем описание товара
+        options = gift_type_option, # указываем вариант товара
+        data_fields = [comment_data_field, key_data_field], # указываем поля с данными предмета
+        attachments = [banner_attachment] # указываем фотографии и тд
+    )
 
-# Публикуем предмет
-statuses = account.get_item_priority_statuses(
-    item_id = item.id,
-    item_price = str(item.price)
-)
+    # Публикуем предмет
+    statuses = await account.get_item_priority_statuses(
+        item_id = item.id,
+        item_price = str(item.price)
+    )
 
-new_item = account.publish_item(
-    item_id = item.id,
-    priority_status_id = f"{next(status.id for status in statuses if status.price == 0 or status.name == "Обычный")}" # выставляем приоритет
-)
+    new_item = await account.publish_item(
+        item_id = item.id,
+        priority_status_id = f"{next(status.id for status in statuses if status.price == 0 or status.name == "Обычный")}" # выставляем приоритет
+    )
+    
+    print(new_item)
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 ---
@@ -397,7 +418,9 @@ async def main():
 	
 	@router.on_new_message()
 	async def on_new_message(account: AccountClient, event: PlayerokEvent) -> None:
-		print(f"[MSG] for account {account.account_data.username}: {event.message.text}")
+        profile = await account.me
+
+		print(f"[MSG] for account {profile.username}: {event.message.text}")
 	
 	listener.start()
 	await asyncio.Event().wait() 
@@ -439,12 +462,15 @@ async def main():
 
     @router.on_new_message()
     async def on_new_message(account: AccountClient, event: PlayerokEvent):
-        text = event.message.text if event.message else None
-        print(f"[MSG] for account {account.account_data.username}: {event.message.text}")
+        profile = await account.me
+    
+        print(f"[MSG] for account {profile.username}: {event.message.text}")
 
     @router.on_item_paid()
     async def on_item_paid(account: AccountClient, event: PlayerokEvent):
-        print(f"[ITEM_PAID] for account {account.account_data.username}: {event.deal.id}")
+        profile = await account.me
+
+        print(f"[ITEM_PAID] for account {profile.username}: {event.deal.id}")
 
     listener.start()
     await asyncio.Event().wait()
@@ -491,12 +517,12 @@ async def main():
             event.type.name,
             event.chat.id if event.chat else None,
         )
-        print(f"[EVENT] for account {item.account.account_data.username}:{event.type.name} - {event.chat.id}")
+        print(f"[EVENT] for account {await item.account.me.username}:{event.type.name} - {event.chat.id}")
         
         # ИЛИ
         
         async for event in listener:
-	        print(f"[EVENT] for account {event.account.account_data.username}:{event.type.name} - {event.chat.id}")
+	        print(f"[EVENT] for account {await event.account.me.username}:{event.type.name} - {event.chat.id}")
 
   
 if __name__ == "__main__":

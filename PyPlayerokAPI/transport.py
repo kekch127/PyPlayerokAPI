@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional, Dict
-from logging import getLogger
-import time
+import asyncio
 import os
 import tempfile
 import shutil
+import mimetypes
+from typing import Literal, Optional, Dict
+from logging import getLogger
 
-import tls_requests
 import curl_cffi
 
 from .types.exceptions import (
@@ -40,6 +40,8 @@ class Transport:
             if self.proxy
             else None
         )
+        
+        self.__curl_session: curl_cffi.AsyncSession = None # type: ignore
 
         self.logger = getLogger("playerokapi")
 
@@ -50,18 +52,14 @@ class Transport:
         self._refresh_clients()
 
     def _refresh_clients(self):
-        self.__tls_requests = tls_requests.Client(
-            proxy=self._proxy_string
-        )
-
-        self.__curl_session = curl_cffi.Session(
+        self.__curl_session = curl_cffi.AsyncSession(
             impersonate = "chrome",
             timeout = 10,
             proxy = self._proxy_string,
-            verify = self._tmp_cert_path, # type: ignore
+            verify = self._tmp_cert_path # type: ignore
         )
 
-    def request(
+    async def request(
         self,
         method: Literal["get", "post"],
         url: str = "https://playerok.com/graphql",
@@ -106,11 +104,11 @@ class Transport:
 
         headers = {**default_headers, **headers}
 
-        def make_request():
+        async def make_request():
             for _ in range(3):
                 try:
                     if method == "get":
-                        return self.__curl_session.get(
+                        return await self.__curl_session.get(
                             url = url,
                             params = payload,
                             headers = headers,
@@ -118,16 +116,103 @@ class Transport:
                         )
 
                     if files:
-                        # для отправки файлов 
-                        return self.__tls_requests.post(
+                        # Автор: ChatGPT.
+                        # Для отправки файлов (я честно до сих пор особо не понимаю, как это дерьмо работает) 
+                        
+                        # Запрос выглядит примерно так
+                        # =================================================================
+                        # POST /graphql
+                        # Content-Type: multipart/form-data; boundary=----...
+
+                        # ------boundary
+                        # Content-Disposition: form-data; name="operations"
+
+                        # {...json...}
+
+                        # ------boundary
+                        # Content-Disposition: form-data; name="map"
+
+                        # {"1":["variables.attachments.0"]}
+
+                        # ------boundary
+                        # Content-Disposition: form-data; name="1"; filename="banner.jpg"
+                        # Content-Type: image/jpeg
+
+                        # <binary image data>
+
+                        # ------boundary--
+                        # =================================================================
+                        # По сути нужно передать в multipart 3 части:
+                        # 1. operaions - JSON GraphQL запроса
+                        # 2. map - куда отправлять дайлы
+                        # 3. сами файлы
+                        
+                        # Удаляем header потому что multipart заголовок выглядит так: Content-Type: multipart/form-data; boundary=----abc123
+                        # boundary генерируется автоматически libcurl, если оставить application/json - сервер не поймет запрос
+                        headers.pop("content-type", None)
+                        
+                        # Обертка над libcurl mime API (по сути билдер multipart запроса)
+                        mime = curl_cffi.CurlMime()
+
+                        if payload:
+                            # Создает multipart часть
+                            # =================================================================
+                            # Content-Disposition: form-data; name="operations"
+                            #
+                            # {json}
+                            # =================================================================
+                            # или
+                            # =================================================================
+                            # Content-Disposition: form-data; name="map"
+                            #
+                            # {json}
+                            # =================================================================
+                            # data= означает строка или bytes
+                            for k, v in payload.items():
+                                mime.addpart(name = k, data = v)
+
+                        # Обертка над файлами. Файлы приходят в формате
+                        # {"1": open("banner.jpg","rb")} или {"1": ("banner.jpg", file)}
+                        for name, file_tuple in files.items():
+                            # определяем имя файла (filename) для header: Content-Disposition: form-data; name="1"; filename="banner.jpg"
+                            # а объект (fileobj) определяем для стриминга в HTTP запрос (по сути говорим libcurl - открой файл и стримь в HTTP запрос)
+                            if isinstance(file_tuple, tuple):
+                                filename = file_tuple[0]
+                                fileobj = file_tuple[1]
+                            else:
+                                fileobj = file_tuple
+                                filename = getattr(fileobj, "name", "file")
+
+                            # определяем MIME (Это добавляет header: Content-Type: image/jpeg)
+                            # Пример:
+                            # banner.jpg → image/jpeg
+                            # banner.png → image/png
+                            mime_type, _ = mimetypes.guess_type(filename)
+                            if mime_type is None:
+                                mime_type = "application/octet-stream"
+
+                            # Генерим сами мультипары
+                            #
+                            # ------boundary
+                            # Content-Disposition: form-data; name="1"; filename="banner.jpg"
+                            # Content-Type: image/jpeg
+                            #
+                            # <binary data>
+                            mime.addpart(
+                                name = name,
+                                filename = filename,
+                                local_path = fileobj.name, 
+                                content_type = mime_type
+                            )
+
+                        return await self.__curl_session.post(
                             url = url,
-                            data = payload,
                             headers = headers,
-                            files = files,
+                            multipart = mime,
                             timeout = self.requests_timeout,
                         )
 
-                    return self.__curl_session.post(
+                    return await self.__curl_session.post(
                         url = url,
                         json = payload,
                         headers = headers,
@@ -150,7 +235,7 @@ class Transport:
         ]
 
         for attempt in range(self.request_max_retries):
-            response = make_request()
+            response = await make_request()
             
             if response is None:
                 continue
@@ -158,11 +243,14 @@ class Transport:
             if not any(sig in response.text for sig in cloudflare_signatures):
                 break
 
+            # закрываем текущую сессию и создаем новую
+            await self.close()
             self._refresh_clients()
+            
             delay = min(120.0, 5.0 * (2 ** attempt))
             
             self.logger.warning(f"Обнаружен Cloudflare, повтор через {delay} секунд")
-            time.sleep(delay)
+            await asyncio.sleep(delay)
 
         else:
             raise CloudflareDetected(response) # type: ignore
@@ -176,3 +264,6 @@ class Transport:
                 raise RequestError(response) # type: ignore
 
         return response
+
+    async def close(self):
+        await self.__curl_session.close()

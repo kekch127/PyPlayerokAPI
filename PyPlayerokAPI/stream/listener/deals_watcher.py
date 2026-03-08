@@ -178,11 +178,7 @@ class DealWatcher:
                 # Повторные попытки
                 for _ in range(3):
                     try:
-                        chat_list = await asyncio.to_thread(
-                            self._account.get_chats,
-                            5,
-                            ChatTypes.PM
-                        )
+                        chat_list = await self._account.get_chats(5, ChatTypes.PM)
                     except Exception:
                         await asyncio.sleep(4)
                         continue
